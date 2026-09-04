@@ -1,3 +1,8 @@
+> **SUPERSEDED.** This document is kept for history only. Parts of it are now
+> known to be wrong (there is no separate "Agency PocketBase instance" — it is the
+> `synkra-os` container itself; the "not yet built" Admin Panel is `synkra-os`).
+> The current architecture is [`SYNKRA-ARCHITECTURE.md` in `synkra-os`](https://github.com/Capacitiq-group/synkra-os/blob/main/SYNKRA-ARCHITECTURE.md).
+
 # Synkra Agency Platform — Technical Architecture & Handover
 
 **Purpose of this document:** the shared contract for everyone building
