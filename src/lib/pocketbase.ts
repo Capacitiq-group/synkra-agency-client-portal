@@ -7,7 +7,11 @@ import PocketBase from "pocketbase";
 
 export const DEFAULT_POCKETBASE_URL = "http://127.0.0.1:8090";
 
-const configured = (import.meta.env["VITE_POCKETBASE_URL"] as string | undefined)?.trim();
+// Canonical name first (SYNKRA-ARCHITECTURE.md / env rollout), legacy name
+// kept as a working fallback so nothing hard-cuts.
+const configured =
+  (import.meta.env["VITE_SYNKRA_PB_URL"] as string | undefined)?.trim() ||
+  (import.meta.env["VITE_POCKETBASE_URL"] as string | undefined)?.trim();
 
 export const POCKETBASE_URL =
   configured && /^https?:\/\//.test(configured)
@@ -38,7 +42,7 @@ export function describeConnectionProblem(): string {
 
 if (!configured) {
   console.warn(
-    `[Synkra Agency Portal] VITE_POCKETBASE_URL is not set. Falling back to ${DEFAULT_POCKETBASE_URL}. ` +
+    `[Synkra Agency Portal] VITE_SYNKRA_PB_URL is not set. Falling back to ${DEFAULT_POCKETBASE_URL}. ` +
       "Set it as a build argument in Coolify. Per ARCHITECTURE.md §1, this should be the dedicated Agency instance, not Client Hub's or web-main's.",
   );
 }

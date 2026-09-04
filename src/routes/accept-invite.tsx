@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { pb } from "@/lib/pocketbase";
+import { pb, POCKETBASE_URL } from "@/lib/pocketbase";
 
 const SearchSchema = z.object({ token: z.string().min(1) });
 
@@ -59,59 +59,22 @@ function AcceptInvitePage() {
     setBusy(true);
     setError(null);
     try {
-      // Find-or-create the company record for this email's domain/company
-      // name - a second invite to the same company should not create a
-      // duplicate agency_clients row.
-      let client: any;
-      try {
-        client = await pb
-          .collection("agency_clients")
-          .getFirstListItem(pb.filter("company_name = {:name}", { name: invite.company_name }));
-      } catch {
-        client = await pb.collection("agency_clients").create({
-          company_name: invite.company_name,
-          contact_name: "",
-          contact_email: invite.email,
-          contact_phone: "",
-          billing_mode: "manual",
-          status: "active",
-        });
-      }
-
-      const user = await pb.collection("agency_client_users").create({
-        email: invite.email,
-        password,
-        passwordConfirm: confirmPassword,
-        agency_client_id: client.id,
-        role: "owner",
-        invited_at: invite.created,
-        invite_accepted_at: new Date().toISOString(),
-        verified: true,
-        emailVisibility: true,
+      // All three writes (client find-or-create, portal user, service rows)
+      // happen server-side in synkra-os's
+      // POST /api/agency-platform/invites/accept hook. The browser no
+      // longer writes to those collections directly, and the hook uses the
+      // real `clients` collection (the old code wrote to `agency_clients`,
+      // which does not exist).
+      const res = await fetch(`${POCKETBASE_URL}/api/agency-platform/invites/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password }),
       });
-
-      // Exactly the services named in the invite - this is what makes
-      // "only see it alone" true from account creation onward.
-      const serviceSlugs: string[] = invite.service_slugs ?? [];
-      for (const slug of serviceSlugs) {
-        await pb.collection("agency_client_services").create({
-          agency_client_id: client.id,
-          service_slug: slug,
-          tier: "standard",
-          monthly_price: 0,
-          setup_price: 0,
-          status: "active",
-          onboarding_status: "paid",
-          pending_change: "none",
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(),
-          activated_at: new Date().toISOString(),
-        });
+      const payload = await res.json();
+      if (!res.ok) {
+        throw new Error(payload?.message ?? "Could not set up your account.");
       }
-
-      await pb.collection("agency_invites").update(invite.id, { status: "accepted" });
-
-      await pb.collection("agency_client_users").authWithPassword(invite.email, password);
+      pb.authStore.save(payload.token, payload.record);
       nav({ to: "/" });
     } catch (err: any) {
       setError(err?.message ?? "Could not set up your account. Contact hello@synkra.co.za.");
